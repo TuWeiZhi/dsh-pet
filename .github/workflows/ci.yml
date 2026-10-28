@@ -1,0 +1,58 @@
+# 日常 CI（push / PR）：只跑不联网的体检，不安装依赖、不发布。
+#
+# 体检项全部在 tools/verify-package.mjs 里（与发版门禁同一个脚本）：
+#   包结构 / package.json 清单字段 / cordis.patch.yml 挂载行 /
+#   assets/config.jsonc 是否仍是出厂默认值 / fork 改动标记是否还在 /
+#   有没有把本机路径、账号、令牌带进仓库。
+#
+# 另加一步 `npm pack --dry-run`：确认打出来的包里真的带着 webm 动画与入口文件
+# （files 白名单写错时，这里才会暴露"包能发但缺东西"）。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      # 本包没有可安装的构建依赖（lib/ 是提交进仓库的产物），所以不需要 npm ci
+      - name: Verify package (structure / manifest / defaults / secrets)
+        run: node tools/verify-package.mjs
+
+      - name: Pack dry-run (files whitelist sanity)
+        run: |
+          npm pack --dry-run --json > pack.json
+          node -e '
+            const report = JSON.parse(require("fs").readFileSync("pack.json", "utf8"))[0];
+            const files = report.files.map((f) => f.path);
+            const must = [
+              "lib/index.js",
+              "lib/client.js",
+              "lib/standalone.js",
+              "assets/config.jsonc",
+              "assets/logo.png",
+              "cordis.patch.yml",
+              "NOTICE.md",
+              "CHANGELOG.md",
+            ];
+            const missing = must.filter((p) => !files.includes(p));
+            const webm = files.filter((p) => p.endsWith(".webm")).length;
+            console.log(`entries: ${report.entryCount}, unpacked: ${(report.unpackedSize / 1048576).toFixed(1)} MiB, webm: ${webm}`);
+            if (!webm) { console.error("::error::包里没有 webm 动画（assets/webm 没进 files 白名单？）"); process.exit(1); }
+            if (missing.length) { console.error(`::error::包里缺少：${missing.join(", ")}`); process.exit(1); }
+            console.log("pack 检查通过");
+          '

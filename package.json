@@ -1,0 +1,130 @@
+{
+  "name": "@tuweizhi/dsh-pet",
+  "version": "0.4.0",
+  "description": "吃白饭的蓝色大肥鱼，赖在 DeepSeek Harness 里不走了。平时爱玩魔方、爱吃各种零食、偶尔打个盹，闲不住就在桌面上溜达两圈，被你拖来甩去也照旧赖着；你忙起来它跟着忙前忙后，也会帮你打理余额钱包，闲下来爱碎碎念，还乐意陪你唠两句。（TuWeiZhi 增强 fork：碎碎念改为全本地语句池、气泡可点收起、拖拽不出边框、边距只算角色本体，详见 CHANGELOG）",
+  "icon": "assets/logo.png",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "desktop-pet",
+    "pet",
+    "floating-widget",
+    "web-ui",
+    "cordis",
+    "react"
+  ],
+  "homepage": "https://github.com/TuWeiZhi/dsh-pet#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TuWeiZhi/dsh-pet.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TuWeiZhi/dsh-pet/issues"
+  },
+  "_comment": [
+    "=============== @tuweizhi/dsh-pet 包清单说明 ===============",
+    "本包是 PC2005-cloud/dsh-pet v0.3.8 的增强 fork（MIT，见 NOTICE.md / CHANGELOG.md）",
+    "type: module —— 本包是 ESM",
+    "main: lib/index.js —— 宿主半侧入口（Cordis 插件：name/inject/apply）",
+    "icon —— 插件图标（DSH 插件管理页显示）：相对 package.json 的图片路径，只认 svg/png/jpg/jpeg/webp，≤256 KiB，realpath 后必须留在包目录内；读取方是 dsh-app-boot 的 iconOf，会内联成 base64 data URL 塞进 meta.icon",
+    "exports['./client'] —— 浏览器半侧入口，DSH 模块系统按它提供 /plugins/<包名>/client.js",
+    "dsh.bundle.patch —— 声明本包是 bundle，patch 文件是 cordis.patch.yml（安装后自动进层栈）",
+    "dsh.client —— 声明浏览器半侧的注入依赖和平台（web）",
+    "dsh.compatibility.dshReleases —— 对官方 DSH 完整版本逐项声明 compatible/incompatible/unknown；只写宽泛范围不算证据，商城最新三版至少需要一个 compatible",
+    "files —— npm publish 只发这些目录/文件（assets/webm 播放资源（VP9-alpha，浏览器 Chrome/Edge/Firefox 与桌面模式共用）；assets/preview 的 GIF 仅 README 展示、不入包）",
+    "files 里的 src —— 上游 v0.3.8 的 TypeScript 原文，随包发布只为对照/移植；本 fork 的改动落在 lib/ 与 runtime/ 的构建产物里（见 patches/），改 src 不会自动生效",
+    "scripts.verify —— 发版前自检：包结构、图标体积、config.jsonc 可解析且仍是默认值、无用户数据或本机路径混入",
+    "scripts.prepublishOnly —— 发布前自动跑一遍自检（本 fork 不随包发布上游构建链，也不需要重新构建 lib/）",
+    "bin.dsh-pet-standalone —— 独立模式 CLI（构建产物 lib/standalone.js）：不打开 DSH 直接跑桌宠，把插件的宿主半边跑在伪 ctx 上",
+    "peerDependencies —— 运行时由宿主（DSH）提供的模块，本包不打包它们",
+    "engines —— Node.js 兼容下限（由运行依赖 @electron/get@5.1.0 的 engines 决定）",
+    "================================================"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "bin": {
+    "dsh-pet-standalone": "lib/standalone.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./src/*": "./src/*",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src",
+    "assets/webm",
+    "runtime/electron-helper",
+    "assets/fonts",
+    "assets/pic",
+    "assets/memes",
+    "assets/config.jsonc",
+    "assets/logo.png",
+    "scripts/ensure-electron.mjs",
+    "cordis.patch.yml",
+    "NOTICE.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "verify": "node tools/verify-package.mjs",
+    "check": "node tools/verify-package.mjs",
+    "prepublishOnly": "node tools/verify-package.mjs",
+    "pack:dry": "npm pack --dry-run"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.135.0",
+    "@electron-internal/extract-zip": "^1.0.5",
+    "@electron/get": "^5.1.0",
+    "openai": "7.39.0",
+    "zod": "4.6.7"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "compatibility": {
+      "dshReleases": {
+        "0.1.7-rc.2": "incompatible",
+        "0.2.0-rc.1": "compatible",
+        "0.2.0-rc.2": "compatible",
+        "0.2.1-rc.2": "compatible"
+      }
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-connection"
+      ],
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.4",
+    "@deepseek-ai/dsh-agent-default-model": "^0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-connection": "^0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-ui-primitives": "^0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.2.0-rc.1",
+    "@deepseek-ai/dsh-commands": "^0.2.0-rc.1",
+    "@deepseek-ai/dsh-credentials": "^0.2.0-rc.1",
+    "@deepseek-ai/dsh-home-paths": "^0.2.0-rc.1",
+    "@deepseek-ai/dsh-host-webserver": "^0.2.0-rc.1",
+    "@deepseek-ai/dsh-llm": "^0.2.0-rc.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
