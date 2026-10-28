@@ -1,4 +1,4 @@
-﻿diff --git a/runtime/electron-helper/shared-core.js b/runtime/electron-helper/shared-core.js
+diff --git a/runtime/electron-helper/shared-core.js b/runtime/electron-helper/shared-core.js
 index 091d6dc..21f543c 100644
 --- a/runtime/electron-helper/shared-core.js
 +++ b/runtime/electron-helper/shared-core.js

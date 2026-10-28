@@ -1,4 +1,4 @@
-﻿diff --git a/runtime/electron-helper/sprite.js b/runtime/electron-helper/sprite.js
+diff --git a/runtime/electron-helper/sprite.js b/runtime/electron-helper/sprite.js
 index 730af12..a81efad 100644
 --- a/runtime/electron-helper/sprite.js
 +++ b/runtime/electron-helper/sprite.js

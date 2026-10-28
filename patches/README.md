@@ -10,9 +10,10 @@
 |---|---|---|---|
 | `01-assets-config-jsonc.patch` | `assets/config.jsonc` | +31 / −11 | 出厂默认配置：新增 `whisperLines` / `whisperBubbleSec` / `whisperTextScale`，`eventsRefreshSec` 增 `action`，`whisperModel` 标停用、`whisperPrompt` 注释改为"仅对话用" |
 | `02-lib-index-js.patch` | `lib/index.js` | +215 / −39 | 宿主半侧：碎碎念改全本地语句池（`WHISPER_LINES_BUILTIN` / `pickWhisperLine` / `publishWhisper`）、按概率出图（`WHISPER_IMAGE_CHANCE`）、`POST /whisper?text=`、新校验器与 `GLOBAL_DEFAULT_KEYS`、调度去掉 `ctx.standaloneAi` 依赖 |
-| `03-lib-client-js.patch` | `lib/client.js` | +436 / −39 | 浏览器半侧：可点击收起的气泡、停留时长/文字倍率、动作间隔（`eventsRefreshSec.action`）、`clampPetBox` 全面夹框、`sideAllow` 边距扣减、设置页两张新卡片与全部中英文案 |
+| `03-lib-client-js.patch` | `lib/client.js` | +437 / −40 | 浏览器半侧：可点击收起的气泡、停留时长/文字倍率、动作间隔（`eventsRefreshSec.action`）、`clampPetBox` 全面夹框、`sideAllow` 边距扣减、设置页两张新卡片与全部中英文案；0.4.1 起模块注册 id 改为 `@tuweizhi/dsh-pet` |
 | `04-runtime-shared-core-js.patch` | `runtime/electron-helper/shared-core.js` | +6 / −2 | 桌面模式：`anchorPixel` 按 `sideAllow` 扣掉画布左右透明留白，边距只算角色本体 |
 | `05-runtime-sprite-js.patch` | `runtime/electron-helper/sprite.js` | +3 / −0 | 桌面模式：把 `sideAllow` 一路传给 `anchorPixel` |
+| `06-src-client-index-ts.patch` | `src/client/index.ts` | +3 / −1 | 源码侧同步 0.4.1 的注册 id 修正（`id` 必须等于包名），保持 `src/` 与产物一致 |
 
 ## 怎么用
 
@@ -39,6 +40,7 @@ for p in /path/to/dsh-pet/patches/*.patch; do git apply -p1 "$p" || echo "冲突
   - 路由处理里的 `POST /whisper`（新增 `?text=` 分支）与 `schedule` 构造处
   - 常量 `WHISPER_IMAGE_CHANCE`、`whisperMeme()`、`WHISPER_LINES_BUILTIN`、`pickWhisperLine()`
 - `lib/client.js`
+  - **末段 `window.__ModuleLoader__.load({ id })`** —— 0.4.1 起 id 必须是包名 `@tuweizhi/dsh-pet`（上游是 `dsh-pet`），改包名时这一行必须跟着改，否则界面侧加载失败
   - `flattenConfigPets`（多带 `whisperBubbleSec` / `whisperTextScale`）
   - `whisperBubbleView` / `bubbleCss` / `makeWhisperBubble`（`onDismiss`、`is-clickable`、`--dsh-pet-whisper-scale`）
   - `throwBounds` / `clampPetBox` / `startThrow` / 拖拽 pointermove & pointerup / `customPos` 渲染

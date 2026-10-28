@@ -239,6 +239,29 @@ for (const [rel, markers] of FORK_MARKERS) {
   }
 }
 
+// ------------------- 5b. client bundle 的模块 id 必须等于包名（否则加载即失败）
+//
+// DSH 的 client-modules 用「包名」当模块 id 去 graphRows / factories 里查 factory，
+// 注册成别的名字就会报：
+//   could not load "@tuweizhi/dsh-pet": bundle ... loaded without registering
+//   "@tuweizhi/dsh-pet" via __ModuleLoader__.load
+// 0.4.0 就是在这一步踩坑（包名改了、注册 id 还留着上游的 "dsh-pet"），这里补一道闸。
+if (pkg && existsSync(abs('lib/client.js'))) {
+  const clientText = readFileSync(abs('lib/client.js'), 'utf8');
+  const expectedId = pkg.name;
+  const registered = [...clientText.matchAll(/__ModuleLoader__\.load\(\{[\s\S]{0,200}?id:\s*["'`]([^"'`]+)["'`]/g)].map((m) => m[1]);
+  if (registered.length === 0) {
+    fail('lib/client.js 里找不到 window.__ModuleLoader__.load({ id: ... }) 注册块');
+  } else {
+    for (const id of registered) {
+      if (id !== expectedId) {
+        fail(`lib/client.js 注册的模块 id 是 "${id}"，与包名 "${expectedId}" 不一致（DSH 会报 loaded without registering）`);
+      }
+    }
+    if (!registered.includes(expectedId)) ok(`client 模块 id = ${expectedId}`);
+  }
+}
+
 // ------------------------------------------------- 6. 私密内容扫描（文本件）
 //
 // 分两组：

@@ -11,6 +11,8 @@ declare const window: {
 };
 
 window.__ModuleLoader__.load({
-  id: 'dsh-pet',
+  // 必须与 package.json 的 name 逐字一致：DSH client-modules 用包名作为模块 id 查 factory，
+  // 不是包名就会报 “loaded without registering ... via __ModuleLoader__.load”。
+  id: '@tuweizhi/dsh-pet',
   factory: makeFactory(),
 });

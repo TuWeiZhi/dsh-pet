@@ -6,6 +6,29 @@
 
 ---
 
+## [0.4.1] —— 修复：client bundle 的模块 id 与包名不一致导致装不上
+
+一句话：**0.4.0 在 DSH 0.2.1-rc.3 上装完报 `could not load "@tuweizhi/dsh-pet"`，这个版本修掉了。**
+
+### 修复 · client 半侧注册 id 改为包名
+
+- `lib/client.js` 里 `window.__ModuleLoader__.load({ id })` 从上游留下的 `"dsh-pet"` 改为 `"@tuweizhi/dsh-pet"`（`src/client/index.ts` 同步）。
+- 原因：DSH 的 **client-modules 用包名当模块 id** 去 `graphRows` / `factories` 里查 factory，查不到就抛
+  `could not load "@tuweizhi/dsh-pet": bundle ... loaded without registering "@tuweizhi/dsh-pet" via __ModuleLoader__.load`。
+  0.4.0 改了包名却没跟着改注册 id，于是**宿主侧正常、界面侧整个插件加载失败**（宠物不出现）。
+- 影响面：仅客户端模块注册名。**数据目录 `$DSH_HOME/dsh-pet`、路由 `/dsh-pet-7340`、cordis entry id `dsh-pet`、locale 命名空间都没动**，已装的配置与状态照旧。
+- 自检补闸：`tools/verify-package.mjs` 新增第 5b 项——`lib/client.js` 注册的 id 必须与 `package.json` 的 `name` **逐字一致**，不一致直接拦住发布。
+
+### 升级
+
+```bash
+dsh plugin add @tuweizhi/dsh-pet@0.4.1
+```
+
+装完刷新界面即可（无需清数据）。
+
+---
+
 ## [0.4.0] —— 首个 fork 版本（基线：上游 dsh-pet 0.3.8）
 
 一句话：**碎碎念彻底本地化（一个模型都不调）、气泡能点掉且能调大小停留、随机动作之间能留白、宠物再也不会被拖出屏幕**。
