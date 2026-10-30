@@ -131,10 +131,17 @@
       /* 碎碎念变体：与浏览器 overlay 一致 —— 字号缩到余额气泡的 0.75、宽度下限更窄（0.10 → 2.1978），
          上限与余额气泡相同；宽度取宽/折行规则继承 .pet-bubble，高度随行数自然增长 */
       .pet-bubble.is-whisper {
+        /* 文字倍率（设置页可配）：直接改 --f 这个锚点——字号/内边距/圆角/宽度上限一起放大，
+           与浏览器端 .dsh-pet-bubble.dsh-pet-whisper 同一套写法（那边也是改 --f）。
+           变量缺省 1 表示"不放大"，保证没有配置时与改造前完全一致。 */
+        --f: calc(var(--f0) * var(--dsh-pet-whisper-scale, 1));
         font-size: calc(var(--f) * 0.7473);
         min-width: calc(var(--f) * 2.1978);
         max-width: min(calc(var(--f) * 10.989), 100%);
       }
+      /* 配图不跟着文字倍率放大（设置页文案：只放大文字，配图尺寸不跟着变）：
+         MEME 配图的 --m 锚在放大后的 --f 上，这里把它拉回收起态字号 --f0 */
+      .pet-bubble.is-whisper .pet-bub-img { --m: var(--f0); }
       .pet-bub-row {
         display: flex;
         justify-content: space-between;

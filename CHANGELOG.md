@@ -6,6 +6,113 @@
 
 ---
 
+## [0.4.4] —— 修复：设置页的「碎碎念停留秒数」与「文字倍率」在桌面端完全没生效
+
+一句话：**这两项在设置页里填了能存下来、浏览器端也认，但桌面端从头到尾没读过它们 —— 停留永远写死 10 秒、文字永远 1×。这一版让桌面端按配置走。**
+
+### 修复 · 桌面端读不到「停留秒数」/「文字倍率」
+
+- 配置链路断在 `renderer.js` 的 `loadConfig()`：它只把 `pets` / `physics` / `confineToScreen` / `font` 交出去，
+  `whisperBubbleSec` 与 `whisperTextScale` 压根没进桌面端（`shared-core.js` 的 `flattenConfigPets` 也没带）。
+  现在两个字段一路带到 `sprite` 的构造函数，经 `whisperDwellMsOf()` / `whisperTextScaleOf()` 归一化
+  （非法/缺省回落 10s 与 1.35，与浏览器端同一口径）。
+- 停留时长：`events.js` 的 `showWhisper` 原来写死 `duration ?? BUBBLE_DURATION_MS`。现在改成
+  **显式 `duration`（`POST /broadcast` 指定）> 设置页「停留秒数」> 内置 10s 兜底**，且 `0` 是合法值 =
+  「不自动消失」（只清旧定时器、不挂新的），与浏览器端 `if (dwellMs > 0)` 同语义。
+- 文字倍率：`index.html` 的 `.pet-bubble.is-whisper` 把 `--f` 乘上 `--dsh-pet-whisper-scale`
+  （`sprite.js` 注入），字号 / 内边距 / 圆角 / 宽度上限一起放大 —— 与浏览器端 `.dsh-pet-bubble.dsh-pet-whisper`
+  改 `--f` 是同一套写法；变量缺省 1，所以没配过的时候与改造前完全一致。
+- 配图不跟着放大（对齐设置页文案「只放大文字，配图尺寸不跟着变」）：`.pet-bubble.is-whisper .pet-bub-img { --m: var(--f0); }`。
+- 窗口上边距按**放大后**的字号预留（`shared-core.js` 新增 `bubbleMaxHeightOfPx()` / `bubbleTopMarginOfPx()`，
+  原 `bubbleMaxHeightPx` / `bubbleTopMarginPx` 改成一行转调、行为不变）：否则倍率调到 3× 时气泡顶端会被窗口上边缘切掉。
+
+### 验证（本机 3440×1440 / Windows）
+
+- 停留秒数填 4：气泡 1.2s 在、5.8s 已消失（改造前恒为 10s）。
+- 停留秒数填 0：12s 后气泡仍在。
+- 显式 `POST /broadcast` 带 `duration: 20000`：配置 3s 时仍活到 8s 以上 —— 优先级正确。
+- 文字倍率 1.0 / 2.2 / 3.0 三档截图对比：文字逐档明显变大、配图尺寸不变、气泡未被窗口切边（窗口高度随字号自动加高）。
+
+### 修复 · `patches/07`–`12` 的编码（`git apply` 报 `No valid patches in input`）
+
+这六个 patch 曾被 PowerShell 的 `>` / `Out-File` 重定向写盘，落成了 **UTF-16LE + BOM + CRLF**，
+`git apply` 会直接拒绝（`error: No valid patches in input (allow with "--allow-empty")`）。
+现全部重写为 **UTF-8 无 BOM + LF**，与 `.gitattributes` 的 `* text=auto eol=lf` 一致。
+重放验证：`git worktree add --detach <tmp> HEAD` 后依次应用 `07`–`13`，**全部 APPLIED**，
+且产出的 10 个文件（`lib/index.js`、`lib/client.js`、`runtime/electron-helper/{shared-core,sprite,events,renderer}.js`、
+`index.html`、`src/host/{config,helper-process,index}.ts`）与工作区 **SHA256 全部一致** —— 即 patch 精确等于
+`0.4.1 → 0.4.4` 的全部差异；另把上游 0.3.8 tarball 解包后重放 `01`–`06` 也全部 APPLIED。
+`patches/README.md` 已补上「用 `git diff --output=` 而不是 `>` 生成 patch」的告警。
+
+---
+
+## [0.4.3] —— 修复：设置页「让宠物说这句」在「仅桌面」下没反应；桌面端气泡支持点一下收起
+
+一句话：**「让宠物说这句」把 surface 写死成 `web`，宠物显示位置是 `desktop` 时被宿主直接拒绝且报错写在页面另一头；桌面端气泡则根本不可点。这一版让两边都能用。**
+
+### 修复 · 设置页「让宠物说这句」点了没反应
+
+- 按钮请求的是 `POST /whisper?…&surface=web`，而宿主会按 `displayCovers('web', display)` 校验：`display="desktop"` 时返回
+  `{ok:false, reason:"pet-not-displayed"}`，气泡自然永远不出现。现在改成 `surface=any`（web / desktop / both 都通过）；
+  菜单里的碎碎念同理。
+- 失败提示原来写到页面顶部的 `msg`（渲染在「宠物配置」卡片右上角），而语句池卡片在下面隔一屏 —— 用户根本看不见，
+  体感就是「点了没反应」。现在试播结果（成功/失败+原因）**就地渲染在语句池卡片里**（`sayMsg`）。
+
+### 新增 · 桌面模式：碎碎念 / 工作气泡点一下收起
+
+- 与浏览器端 `onDismiss` 行为一致：气泡挂 `is-clickable`（`.pet-bubble.is-clickable{pointer-events:auto;cursor:pointer}` 本就有），
+  并把气泡矩形随 `syncInputRegions()` 上报给主进程，`inputBusy()` 计入它 —— 否则窗口整窗穿透，点击根本进不来。
+- 点击分派：余额气泡仍走展开/收起；碎碎念走 `clearWhisper()`；工作气泡清 `workOn` 与定时器。
+
+### 修复 · 收起瞬间气泡「短暂变大一下」
+
+- 气泡是 `opacity 0.25s` 淡出的，而旧的 `renderBubble()` 在隐藏路径上会先摘掉 `is-whisper`（字号 0.7473×、宽度上限 10.989em）
+  与配图类 —— 尺寸类一变，正在淡出的气泡立刻跳回大号字号和大宽度。
+- 现在 `slot === 'none'` 提前处理，只摘 `is-on`（触发淡出）与 `is-clickable`（撤销命中区），尺寸类留到下次真正渲染再改。
+
+---
+
+## [0.4.2] —— 修复：切「仅桌面」后宠物不出现（且一声不响）、用户配置被默认值覆盖
+
+一句话：**桌面模式依赖的 Electron 运行时缺失时，插件会静默下载、失败后静默放弃，界面上零反馈；期间一旦配置读取失败，回退的默认值又会把用户配置整份覆盖掉。这一版把这两条链路都堵上了。**
+
+### 修复 · Electron 运行时：单次下载失败就永久放弃 → 多镜像重试
+
+- `ensureElectronDownload()` 原来是「一次尝试、整段 10 分钟超时」，遇到一次 `fetch failed`（DNS 抖动、连接被重置）就直接
+  `warn` 一句后放弃，桌面宠物再也不起来 —— 用户侧感受就是「选了『仅桌面』，什么也没发生」。
+- 现在改为**按镜像依次重试**：默认镜像 `https://npmmirror.com/mirrors/electron/`，第二个回退到 GitHub Releases；
+  单次尝试超时 `attemptTimeoutMs`（默认 `min(总超时, 180s)`，用 `AbortController` 打断），失败立刻换源。
+- 新增环境变量 `DSH_PET_ELECTRON_MIRRORS`（`|` 分隔）可自定义镜像顺序；`EnsureElectronOptions` 增加
+  `attemptTimeoutMs` / `mirrors` 两个字段。
+- 下载/解压各阶段补了带进度的 `log`（`download attempt 1/2`、`downloading 12.3MB / 137.7MB`、`ready in 42.1s`），
+  排查时日志里能看出卡在哪一步。
+
+### 修复 · 用户配置：解析失败被静默吞掉 → 告警 + 落盘前自动备份
+
+- `readJsonc()` 原来 `catch { return undefined }`：文件读得到但解析不了（编码不对 / JSONC 语法错）时，
+  整份用户配置被当成「用户没配置过」，**静默**回退包内默认值 —— 设置页随后一保存，默认值就
+  （按白名单重建、且客户端带 `force=1` 绕过 409 守卫）把用户配置覆盖成几百字节的残缺文件。
+- 现在：先读字节，按 `utf16le` / `utf16be` / `utf8` 依次尝试解码（BOM 与否都试；无 BOM 但满是 `0x00` 也试 UTF-16），
+  解出来就用，并在非 UTF-8 时 `warnOnce` 提示「建议另存为 UTF-8」；**全部失败时也必须告警**
+  （路径 + 原因 + 备份位置），不再无声无息。
+- 新增 `backupUserConfig(paths)`：在 `PUT /config` 写盘前、以及「恢复默认」（`syncUserConfigFromDefault`）覆盖前，
+  先把现有用户配置复制成 `main-config.jsonc.bak-<UTC 时间戳>`，失败只 warn、不阻塞保存。
+  这样即便再遇到"保存把配置洗了"，也有东西能捞回来。
+- 顶层是数组 / 标量等非对象内容一律视为非法配置（原来数组能蒙混过关）。
+
+### 已知限制
+
+- 设置页**仍然没有**「桌面端正在下载 Electron / 启动失败」的可见提示（要改 client bundle 的 UI，本版没动）。
+  遇到桌面宠物迟迟不出现，请先看宿主日志里的 `[dsh-pet]` 行。
+
+### 升级
+
+```bash
+dsh plugin add @tuweizhi/dsh-pet@0.4.2
+```
+
+---
+
 ## [0.4.1] —— 修复：client bundle 的模块 id 与包名不一致导致装不上
 
 一句话：**0.4.0 在 DSH 0.2.1-rc.3 上装完报 `could not load "@tuweizhi/dsh-pet"`，这个版本修掉了。**

@@ -197,11 +197,20 @@ PetSprite.prototype.showWhisper = function showWhisper(text, image, url, duratio
   this.whisperUrl = typeof url === 'string' ? url : '';
   this.renderBubble();
   // 气泡定时消失（与动画解耦，与余额同一语义；重复触发先清旧定时器）
-  if (this.whisperTimer !== null) window.clearTimeout(this.whisperTimer);
-  this.whisperTimer = window.setTimeout(() => {
-    this.whisperOn = false;
-    this.renderBubble();
-  }, duration ?? BUBBLE_DURATION_MS);
+  // 时长优先级：显式 duration（POST /broadcast 指定）> 设置页「停留秒数」> 内置 10s 兜底。
+  // 0 = 「不自动消失」：只清旧定时器、不挂新的——留到下一句碎碎念，或被别的气泡/清空顶掉
+  //（与浏览器端同一语义，那边也是 if (dwellMs > 0) 才挂定时器）。
+  if (this.whisperTimer !== null) {
+    window.clearTimeout(this.whisperTimer);
+    this.whisperTimer = null;
+  }
+  const dwellMs = duration ?? this.whisperDwellMs;
+  if (dwellMs > 0) {
+    this.whisperTimer = window.setTimeout(() => {
+      this.whisperOn = false;
+      this.renderBubble();
+    }, dwellMs);
+  }
 };
 
 // 余额展示（气泡 + 档位动画）：周期轮询与菜单点播共用同一展示路径，视觉/行为严格一致。

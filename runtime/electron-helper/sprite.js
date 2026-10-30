@@ -13,6 +13,10 @@ const OPEN_SHORTCUT_HINT = /Mac/i.test(navigator.platform || navigator.userAgent
 /** 本次点击是否按住了「呼出 DSH」的修饰键（Ctrl / Cmd） */
 const isOpenShortcut = (e) => !!(e && (e.ctrlKey || e.metaKey));
 
+// 碎碎念气泡的字号系数（相对气泡正文）：index.html 的 .pet-bubble.is-whisper 用的同一个值，
+// 这里重复一份是为了算窗口上边距（要按"放大后的字号"预留，否则气泡顶端会被窗口切掉）。
+const WHISPER_FONT_RATIO = 0.7473;
+
 // ---------- 单只宠物（行为与浏览器 PetCard 一致；纯逻辑来自 src/shared） ----------
 class PetSprite {
   constructor(pet) {
@@ -49,7 +53,13 @@ class PetSprite {
     // 注意：余量自此**不再四边相等**，主进程不能再按「窗口宽/4」反推命中区，故 setBounds 一并上报余量。
     const m = this.size * WINDOW_MARGIN_RATIO;
     const fontConf = pet.font || config.font || S.DEFAULT_FONT;
-    this.margin = { t: Math.max(m, S.bubbleTopMarginPx(fontConf, this.size)), r: m, b: m, l: m };
+    // 碎碎念的文字倍率（设置页可配，最多 3×）会把气泡字号放大到超过正文：上边距必须按**放大后**
+    // 的最大字号算，否则气泡顶端会被窗口上边缘切掉（余量是透明的，加高没有副作用）。
+    this.whisperScale = S.whisperTextScaleOf(config.whisperTextScale);
+    this.whisperDwellMs = S.whisperDwellMsOf(config.whisperBubbleSec);
+    const bubbleFontPx = S.resolveFontPx(fontConf, this.size).bubble;
+    const whisperFontPx = bubbleFontPx * WHISPER_FONT_RATIO * this.whisperScale;
+    this.margin = { t: Math.max(m, S.bubbleTopMarginOfPx(Math.max(bubbleFontPx, whisperFontPx), this.size)), r: m, b: m, l: m };
     window.__dshPetDebug.winMargin = this.margin;
     // 宠物包围盒左上角在【工作区】坐标系里的位置（本窗口的位置 = 宠物的位置）
     this.pos = { x: 0, y: 0 };
@@ -174,6 +184,9 @@ class PetSprite {
     const fontPx = S.resolveFontPx(this.font, this.size);
     this.el.style.setProperty('--dsh-pet-font-bubble', fontPx.bubble + 'px');
     this.el.style.setProperty('--dsh-pet-font-tip', fontPx.tip + 'px');
+    // 碎碎念文字倍率：.pet-bubble.is-whisper 读这个变量把 --f 放大（盒子/内边距/圆角一起放大），
+    // 与浏览器端 --dsh-pet-whisper-scale 同一套变量名与语义
+    this.el.style.setProperty('--dsh-pet-whisper-scale', String(this.whisperScale));
     const stage = document.createElement('div');
     stage.className = 'pet-stage';
     stage.style.transform = 'translateY(' + this.bottomPad + 'px)';

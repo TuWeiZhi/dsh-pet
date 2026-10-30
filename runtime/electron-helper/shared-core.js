@@ -622,6 +622,19 @@ function whisperBubbleView(state) {
 		text: msg
 	}];
 }
+/** 碎碎念气泡的停留毫秒（设置页「停留秒数」）。
+ *  桌面端此前把时长写死成 BUBBLE_DURATION_MS(10s)，设置页填多少都不生效——与浏览器端
+ *  （client 的 whisperDwellMs 读 cfg.whisperBubbleSec）行为不一致，这里补齐同一口径：
+ *  **0 是合法值**＝「不自动消失」（留到下一句碎碎念，或被别的气泡/清空顶掉），非法/缺省回落 10s。 */
+function whisperDwellMsOf(sec) {
+	const n = Number(sec);
+	return Number.isFinite(n) && n >= 0 ? Math.round(n * 1000) : 10000;
+}
+/** 碎碎念文字倍率（设置页「文字倍率」，相对气泡正文字号）：缺省/非法回落 1.35（与浏览器端一致） */
+function whisperTextScaleOf(scale) {
+	const n = Number(scale);
+	return Number.isFinite(n) && n > 0 ? n : 1.35;
+}
 function memeImageUrl(name, base = "/dsh-pet-7340", assetRoot = "") {
 	const root = String(assetRoot ?? "").trim();
 	const prefix = root ? "/pic/memes/" + encodeURIComponent(root) : "/pic/memes";
@@ -761,13 +774,21 @@ const BUBBLE_METRICS = {
 	imgMaxRatio: 1
 };
 function bubbleMaxHeightPx(font, size) {
-	const f = resolveFontPx(font, size).bubble;
+	return bubbleMaxHeightOfPx(resolveFontPx(font, size).bubble);
+}
+/** 同上，但直接收**已算好的字号 px**：碎碎念的文字倍率会把气泡字号放大到超过正文字号，
+ *  调用方（桌面 sprite 算窗口上边距）必须按"放大后的最大字号"预留空间，否则气泡顶端被窗口切掉。 */
+function bubbleMaxHeightOfPx(f) {
 	const m = BUBBLE_METRICS;
 	return m.padY * 2 * f + m.lineHeight * f + m.lineHeight * m.subScale * f + m.imgWidth * m.imgMaxRatio * f + m.imgMargin * f;
 }
 function bubbleTopMarginPx(font, size) {
+	return bubbleTopMarginOfPx(resolveFontPx(font, size).bubble, size);
+}
+/** 同上，但直接收**已算好的字号 px**（理由见 bubbleMaxHeightOfPx） */
+function bubbleTopMarginOfPx(f, size) {
 	const overlap = (Number(size) || 0) * BUBBLE_OVERLAP_RATIO;
-	return Math.max(0, Math.ceil(bubbleMaxHeightPx(font, size) - overlap));
+	return Math.max(0, Math.ceil(bubbleMaxHeightOfPx(f) - overlap));
 }
 
 //#endregion
@@ -2051,7 +2072,9 @@ exports.balancePercent = balancePercent
 exports.bodyPixelBox = bodyPixelBox
 exports.boundingRect = boundingRect
 exports.bubbleMaxHeightPx = bubbleMaxHeightPx
+exports.bubbleMaxHeightOfPx = bubbleMaxHeightOfPx
 exports.bubbleTopMarginPx = bubbleTopMarginPx
+exports.bubbleTopMarginOfPx = bubbleTopMarginOfPx
 exports.buildMenuTree = buildMenuTree
 exports.buildMoreBranch = buildMoreBranch
 exports.clampPointInRect = clampPointInRect
@@ -2137,6 +2160,8 @@ exports.trimTrail = trimTrail
 exports.truncate = truncate
 exports.urgentWindow = urgentWindow
 exports.whisperBubbleView = whisperBubbleView
+exports.whisperDwellMsOf = whisperDwellMsOf
+exports.whisperTextScaleOf = whisperTextScaleOf
 exports.windowsHandler = windowsHandler
 return exports;
 })({});

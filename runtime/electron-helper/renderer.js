@@ -66,6 +66,11 @@ async function loadConfig() {
     // 字体（全局一份，合并器已填内置默认）：字体族在此取一次、注入全局变量；字号由每只宠物
     // 按自己的尺寸算（见 PetSprite 注入的 --dsh-pet-font-bubble / --dsh-pet-font-tip）
     font: (merged && merged.main && merged.main.font) || S.DEFAULT_FONT,
+    // 碎碎念气泡的展示参数（设置页「语句池」卡片里那两格）：停留秒数 + 文字倍率。
+    // 与 font 同一处境——用户层全局一份、合并器已填默认。桌面端此前**完全没读**这两个字段，
+    // 于是设置页填了也不生效（停留永远写死 10s、文字永远 1×）。
+    whisperBubbleSec: merged && merged.main ? merged.main.whisperBubbleSec : void 0,
+    whisperTextScale: merged && merged.main ? merged.main.whisperTextScale : void 0,
   };
 }
 
